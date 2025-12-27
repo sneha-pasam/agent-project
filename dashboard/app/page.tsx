@@ -1,13 +1,19 @@
 import { fetchEvalData } from "@/lib/s3";
-import { Activity, Database, Server, Terminal, ShieldCheck } from "lucide-react";
+import { Activity, Database, Server, Terminal, ShieldCheck, AlertCircle } from "lucide-react";
 
 // This tells Next.js to refresh the data every 10 seconds
 export const revalidate = 10; 
 
 export default async function Dashboard() {
-  const allData = await fetchEvalData();
+  const allData = await fetchEvalData() || [];
+  
   // Get the most recent entry for the top cards
   const latest = Array.isArray(allData) && allData.length > 0 ? allData[0] : null;
+
+  // Calculate Success Rate
+  const totalLogs = allData.length;
+  const successfulLogs = allData.filter((log: any) => log.result === "SUCCESS").length;
+  const successRate = totalLogs > 0 ? ((successfulLogs / totalLogs) * 100).toFixed(1) : "0";
 
   return (
     <div className="min-h-screen bg-[#050505] text-white p-8 font-sans">
@@ -22,30 +28,36 @@ export default async function Dashboard() {
             <p className="text-zinc-500 text-sm mt-1">AI Agent Evaluation • Sneha Pasam</p>
           </div>
           <div className="flex items-center gap-3 px-4 py-2 bg-zinc-900/50 rounded-full border border-white/5">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="text-xs font-mono text-zinc-300">LOCALSTACK_S3: ACTIVE</span>
+            <div className={`w-2 h-2 rounded-full animate-pulse ${latest ? 'bg-emerald-500' : 'bg-red-500'}`} />
+            <span className="text-xs font-mono text-zinc-300">LOCALSTACK_S3: {latest ? 'ACTIVE' : 'WAITING'}</span>
           </div>
         </header>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <StatCard 
             title="System Status" 
-            value={latest ? "REACHABLE" : "DISCONNECTED"} 
+            value={latest ? "ONLINE" : "OFFLINE"} 
             icon={<Server className="text-blue-400" size={20} />}
-            desc="LocalStack Docker Container"
+            desc="LocalStack Docker"
           />
           <StatCard 
             title="Latest Accuracy" 
             value={latest ? latest.metrics.accuracy : "0%"} 
             icon={<ShieldCheck className="text-emerald-400" size={20} />}
-            desc={latest ? `Agent: ${latest.agent}` : "No data available"}
+            desc={latest ? `Agent: ${latest.agent}` : "Pending..."}
           />
           <StatCard 
-            title="Avg Latency" 
+            title="Latency" 
             value={latest ? latest.metrics.latency : "N/A"} 
             icon={<Activity className="text-purple-400" size={20} />}
-            desc="Current Response Time"
+            desc="Current response"
+          />
+          <StatCard 
+            title="Reliability" 
+            value={`${successRate}%`} 
+            icon={<AlertCircle className="text-orange-400" size={20} />}
+            desc="Total Success Rate"
           />
         </div>
 
@@ -66,24 +78,36 @@ export default async function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {allData.map((log: any, i: number) => (
-                  <tr key={i} className="hover:bg-white/[0.02]">
-                    <td className="py-3 text-zinc-500">{log.last_updated}</td>
-                    <td className="py-3 text-emerald-400 font-bold">{log.result}</td>
-                    <td className="py-3 text-blue-400">{log.metrics.latency}</td>
-                    <td className="py-3 text-right text-purple-400">{log.metrics.accuracy}</td>
+                {allData.length > 0 ? (
+                  allData.map((log: any, i: number) => (
+                    <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="py-3 text-zinc-500">{log.last_updated}</td>
+                      <td className={`py-3 font-bold ${
+                        log.result === 'FAILED' ? 'text-red-500 animate-pulse' : 'text-emerald-400'
+                      }`}>
+                        {log.result}
+                      </td>
+                      <td className="py-3 text-blue-400">{log.metrics.latency}</td>
+                      <td className="py-3 text-right text-purple-400">{log.metrics.accuracy}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="py-10 text-center text-zinc-600 italic">
+                      No data found. Start 'python agent.py' to begin.
+                    </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
         </div>
 
         {/* JSON Raw Output (Collapsed View) */}
-        <details className="bg-zinc-900/30 border border-white/5 rounded-2xl p-6 cursor-pointer">
-          <summary className="flex items-center gap-2 text-zinc-400 text-sm font-semibold uppercase tracking-wider">
-            <Terminal size={18} />
-            Raw S3 Payload (Latest)
+        <details className="bg-zinc-900/30 border border-white/5 rounded-2xl p-6 cursor-pointer group">
+          <summary className="flex items-center gap-2 text-zinc-400 text-sm font-semibold uppercase tracking-wider list-none">
+            <Terminal size={18} className="group-open:rotate-90 transition-transform" />
+            Raw S3 Payload (Latest Log)
           </summary>
           <div className="mt-4 bg-black/50 rounded-lg p-5 border border-white/5 overflow-x-auto">
             <pre className="text-blue-300 font-mono text-xs">
@@ -98,13 +122,13 @@ export default async function Dashboard() {
 
 function StatCard({ title, value, icon, desc }: { title: string, value: string, icon: any, desc: string }) {
   return (
-    <div className="bg-zinc-900/50 border border-white/5 p-6 rounded-2xl hover:bg-zinc-800/50 transition-all">
+    <div className="bg-zinc-900/50 border border-white/5 p-6 rounded-2xl hover:bg-zinc-800/50 transition-all border-l-2 border-l-transparent hover:border-l-blue-400">
       <div className="flex justify-between items-start mb-4">
         <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest">{title}</span>
         {icon}
       </div>
-      <div className="text-xl font-bold mb-1">{value}</div>
-      <p className="text-zinc-600 text-xs">{desc}</p>
+      <div className="text-xl font-bold mb-1 font-mono">{value}</div>
+      <p className="text-zinc-600 text-xs italic">{desc}</p>
     </div>
   );
 }
