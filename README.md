@@ -1,14 +1,15 @@
-# Terminal-Bench Observer 🚀
+# 🤖 Terminal-Bench Observer
 
-A full-stack monitoring system for AI Agents using **Next.js**, **Python**, and **LocalStack**.
+A real-time AI Agent observability dashboard built with **Next.js**, **Python**, and **LocalStack (S3)**. This project simulates an AI agent's evaluation loop and monitors system reliability, latency, and accuracy in a local cloud environment.
 
-## 🛠 Tech Stack
-- **Frontend:** Next.js 15 (Turbopack), Tailwind CSS
-- **Backend Simulation:** LocalStack (AWS S3)
-- **Agent Logic:** Python (Boto3)
-- **Infrastructure:** Docker Compose
+## 🏗️ Architecture
+- **Producer:** Python script simulating AI agent performance with randomized "chaos" (failures).
+- **Storage:** LocalStack S3 bucket acting as a serverless data lake.
+- **Consumer:** Next.js 15 dashboard fetching telemetry via AWS SDK and rendering live updates.
 
-## 🚀 How to Run
-1. **Infrastructure:** `docker-compose up -d`
-2. **Dashboard:** `cd dashboard && npm install && npm run dev`
-3. **Agent:** `python agent.py`
+## 🚀 Getting Started
+
+### 1. Start the Infrastructure
+```powershell
+docker-compose up -d
+./init-s3.sh
