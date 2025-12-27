@@ -1,39 +1,46 @@
 import boto3
 import json
+import time
+import random
+from datetime import datetime
 
-# Setup connection to your LocalStack "Cloud"
-s3 = boto3.client(
-    's3',
-    endpoint_url="http://localhost:4566",
-    aws_access_key_id="test",
-    aws_secret_access_key="test",
-    region_name="us-east-1"
-)
+# Configuration
+BUCKET_NAME = "agent-bench-results"
+s3 = boto3.client('s3', endpoint_url="http://localhost:4566")
 
-def run_local_eval():
-    bucket_name = "agent-bench-results"
-    
-    # Create the bucket in your local cloud
-    print(f"Creating bucket: {bucket_name}...")
+def run_agent_loop():
+    # Ensure bucket exists
     try:
-        s3.create_bucket(Bucket=bucket_name)
-    except Exception as e:
-        print("Bucket might already exist, moving on...")
+        s3.create_bucket(Bucket=BUCKET_NAME)
+        print(f"Checking bucket: {BUCKET_NAME}...")
+    except:
+        pass
 
-    # Simulating a mock evaluation log
-    eval_data = {
-        "agent": "Terminal-Bench-V1",
-        "result": "SUCCESS",
-        "metrics": {"latency": "150ms", "accuracy": "99.9%"}
-    }
+    print("🚀 Agent Live Loop Started. Press Ctrl+C to stop.")
+    
+    while True:
+        # Simulate evaluation with slight variations
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        simulated_latency = f"{random.randint(140, 180)}ms"
+        
+        log_data = {
+            "agent": "Terminal-Bench-V1",
+            "result": "SUCCESS",
+            "last_updated": timestamp,
+            "metrics": {
+                "latency": simulated_latency,
+                "accuracy": "99.9%"
+            }
+        }
 
-    # Upload to LocalStack
-    s3.put_object(
-        Bucket=bucket_name,
-        Key="latest-eval.json",
-        Body=json.dumps(eval_data)
-    )
-    print("✅ Log successfully uploaded to your local AWS S3!")
+        # Upload to S3
+        file_name = "latest_results.json"
+        s3.put_object(Bucket=BUCKET_NAME, Key=file_name, Body=json.dumps(log_data))
+        
+        print(f"[{timestamp}] ✅ Dashboard Updated (Latency: {simulated_latency})")
+        
+        # Wait for 10 seconds before next update
+        time.sleep(10)
 
 if __name__ == "__main__":
-    run_local_eval()
+    run_agent_loop()
