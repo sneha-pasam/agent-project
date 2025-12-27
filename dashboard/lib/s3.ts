@@ -1,24 +1,32 @@
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, ListObjectsV2Command, GetObjectCommand } from "@aws-sdk/client-s3";
 
-export const s3Client = new S3Client({
-  endpoint: "http://localhost:4566", // Pointing to your local Docker container
+const s3Client = new S3Client({
+  endpoint: "http://localhost:4566",
   region: "us-east-1",
   credentials: { accessKeyId: "test", secretAccessKey: "test" },
   forcePathStyle: true,
 });
 
 export async function fetchEvalData() {
-  const command = new GetObjectCommand({
-    Bucket: "agent-bench-results",
-    Key: "latest-eval.json",
-  });
-
   try {
-    const response = await s3Client.send(command);
-    const str = await response.Body?.transformToString();
-    return str ? JSON.parse(str) : null;
-  } catch (err) {
-    console.error("No data found in local S3 yet.");
-    return null;
+    const listCmd = new ListObjectsV2Command({ Bucket: "agent-bench-results" });
+    const list = await s3Client.send(listCmd);
+
+    if (!list.Contents) return [];
+
+    // Fetch details for all objects
+    const dataPromises = list.Contents.map(async (obj) => {
+      const getCmd = new GetObjectCommand({ Bucket: "agent-bench-results", Key: obj.Key });
+      const response = await s3Client.send(getCmd);
+      const str = await response.Body?.transformToString();
+      return str ? JSON.parse(str) : null;
+    });
+
+    const results = await Promise.all(dataPromises);
+    // Sort by timestamp if available, otherwise return all
+    return results.filter(r => r !== null).reverse(); 
+  } catch (e) {
+    console.error("S3 Fetch Error:", e);
+    return [];
   }
 }
