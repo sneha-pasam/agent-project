@@ -1,5 +1,18 @@
+# Next.js
 node_modules/
-localstack_data/
 .next/
+out/
+build/
+.env*
+
+# Python
 __pycache__/
-.env
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# OS files
+.DS_Store
+Thumbs.db
