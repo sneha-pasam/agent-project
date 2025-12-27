@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  localstack:
+    container_name: localstack_main
+    image: localstack/localstack
+    ports:
+      - "127.0.0.1:4566:4566"            # LocalStack Gateway
+      - "127.0.0.1:4510-4559:4510-4559"  # External services port range
+    environment:
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "./init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh"  # Auto-run script
+      - "/var/run/docker.sock:/var/run/docker.sock"
